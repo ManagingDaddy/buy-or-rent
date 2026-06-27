@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mieten oder Kaufen – Vermögensvergleich über die Zeit</title>
+<meta name="description" content="Interaktiver Rechner: Wie entwickelt sich das Vermögen über die Jahre, wenn man mietet und anlegt – verglichen mit Kaufen auf Kredit?">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Spectral:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --bg:#F3F4EF; --surface:#FFFFFF; --ink:#17212E; --muted:#6A7280;
+    --line:#E4E7E0; --rent:#2F6DB0; --buy:#15916B; --accent:#2F6DB0;
+    --soft:#F7F8F4; --radius:14px;
+    --font-ui:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --font-display:'Spectral',Georgia,'Times New Roman',serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--font-ui); font-size:15px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:clamp(20px,4vw,56px) clamp(16px,4vw,32px) 64px}
+  header.masthead{margin-bottom:28px}
+  .eyebrow{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:0 0 10px}
+  h1{
+    font-family:var(--font-display); font-weight:600;
+    font-size:clamp(30px,5vw,46px); line-height:1.05; letter-spacing:-.01em; margin:0 0 12px;
+  }
+  h1 .vs{color:var(--muted); font-style:italic; font-weight:500}
+  .lede{font-size:clamp(15px,1.8vw,17px); color:#43505F; max-width:62ch; margin:0}
+
+  /* Live result strip */
+  .verdict{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px;
+    margin:26px 0 8px; padding:14px 16px; background:var(--surface);
+    border:1px solid var(--line); border-radius:var(--radius);
+  }
+  .verdict .tag{font-size:13px; color:var(--muted)}
+  .verdict .who{font-family:var(--font-display); font-size:18px; font-weight:600}
+  .verdict .who.rent{color:var(--rent)} .verdict .who.buy{color:var(--buy)}
+  .verdict .by{font-variant-numeric:tabular-nums; font-weight:600}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:14px 0 22px}
+  .mc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px}
+  .mc .l{font-size:12.5px; color:var(--muted); margin:0 0 6px; display:flex; align-items:center; gap:7px}
+  .mc .l .dot{width:9px; height:9px; border-radius:2px; flex:none}
+  .mc .v{font-size:24px; font-weight:600; font-variant-numeric:tabular-nums; margin:0; letter-spacing:-.01em}
+
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:clamp(16px,3vw,24px); margin-bottom:22px}
+  .chart-box{position:relative; width:100%; height:clamp(300px,46vw,420px)}
+  .legend{display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:14px; font-size:13px; color:#43505F}
+  .legend span{display:flex; align-items:center; gap:7px}
+  .legend i{width:18px; height:0; display:inline-block}
+  .legend i.rent{border-top:2px dashed var(--rent)} .legend i.buy{border-top:2px solid var(--buy)}
+
+  .controls-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap}
+  .controls-head h2{font-family:var(--font-display); font-weight:600; font-size:22px; margin:0}
+  .reset{
+    font:inherit; font-size:13px; font-weight:500; color:var(--accent); cursor:pointer;
+    background:none; border:1px solid var(--line); border-radius:999px; padding:7px 14px;
+  }
+  .reset:hover{background:var(--soft)} .reset:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  fieldset{border:none; margin:0 0 18px; padding:0}
+  fieldset legend{
+    font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+    padding:0; margin-bottom:12px; display:flex; align-items:center; gap:8px; width:100%;
+  }
+  fieldset legend::after{content:""; flex:1; height:1px; background:var(--line)}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px 22px}
+  .ctl{display:flex; flex-direction:column; gap:6px}
+  .ctl .row{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+  .ctl .lab{font-size:13.5px; color:#3C4756}
+  .ctl .val{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:99px;
+    background:var(--line); accent-color:var(--accent); cursor:pointer; margin:6px 0;
+  }
+  input[type=range]:focus-visible{outline:2px solid var(--accent); outline-offset:6px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--accent); border:3px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.25);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px; height:14px; border-radius:50%; background:var(--accent); border:3px solid #fff;
+  }
+
+  .secline{display:flex; flex-wrap:wrap; gap:6px 22px; font-size:13px; color:var(--muted); margin-top:4px}
+  .secline b{font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums}
+
+  details.logic{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:4px 18px; margin-bottom:18px}
+  details.logic summary{cursor:pointer; font-weight:600; padding:14px 0; font-family:var(--font-display); font-size:18px}
+  details.logic summary:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+  details.logic[open] summary{border-bottom:1px solid var(--line)}
+  details.logic .body{padding:14px 0 4px; font-size:14px; color:#3C4756}
+  details.logic .body p{margin:0 0 12px} details.logic .body ul{margin:0 0 12px; padding-left:20px}
+  details.logic code{background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:13px}
+
+  footer{margin-top:34px; padding-top:20px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted)}
+  footer p{margin:0 0 8px; max-width:74ch}
+
+  @media (max-width:520px){ .verdict{flex-direction:column; align-items:flex-start} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Vermögensrechner · 20-Jahres-Horizont</p>
+    <h1>Mieten <span class="vs">oder</span> Kaufen?</h1>
+    <p class="lede">Wie entwickelt sich das Vermögen über die Jahre, wenn man zur Miete wohnt und sein Kapital anlegt – verglichen damit, auf Kredit zu kaufen? Verschieben Sie die Regler und sehen Sie den Verlauf in Echtzeit. Verglichen wird das Vermögen <em>nach</em> Abzug der verbrauchten Wohnkosten (Miete bzw. Kreditzinsen); gespartes Kapital und Tilgung bleiben als Vermögen erhalten.</p>
+  </header>
+
+  <div class="verdict" aria-live="polite">
+    <span class="tag">Nach <b id="vd-years">20</b> Jahren liegt vorn:</span>
+    <span class="who" id="vd-who">–</span>
+    <span class="tag">mit einem Abstand von</span>
+    <span class="by" id="vd-by">–</span>
+  </div>
+
+  <div class="cards">
+    <div class="mc"><p class="l"><span class="dot" style="background:var(--rent)"></span>Mieten + sparen</p><p class="v" id="o_rent">–</p></div>
+    <div class="mc"><p class="l"><span class="dot" style="background:var(--buy)"></span>Kaufen</p><p class="v" id="o_buy">–</p></div>
+    <div class="mc"><p class="l">Differenz (Kauf − Miete)</p><p class="v" id="o_diff">–</p></div>
+    <div class="mc"><p class="l">Break-even</p><p class="v" id="o_be">–</p></div>
+  </div>
+
+  <div class="panel">
+    <div class="legend">
+      <span><i class="rent"></i>Mieten + Sparplan</span>
+      <span><i class="buy"></i>Kaufen mit Kredit</span>
+    </div>
+    <div class="chart-box">
+      <canvas id="chart" role="img" aria-label="Liniendiagramm: Vermögen nach Wohnkosten über die Laufzeit für Mieten plus Sparplan gegenüber Kaufen mit Kredit."></canvas>
+    </div>
+    <div class="secline">
+      <span>Spardepot Ende: <b id="o_sp">–</b></span>
+      <span>Eigenkapital im Haus (Ende): <b id="o_eq">–</b></span>
+      <span>Zinskosten gesamt: <b id="o_int">–</b></span>
+      <span>Kumulierte Miete: <b id="o_cum">–</b></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="controls-head">
+      <h2>Stellschrauben</h2>
+      <button class="reset" id="reset" type="button">Auf Standardwerte zurücksetzen</button>
+    </div>
+
+    <fieldset>
+      <legend>Allgemein</legend>
+      <div class="grid">
+        <label class="ctl"><span class="row"><span class="lab">Anfangsvermögen (beide)</span><span class="val" id="v_ek"></span></span><input type="range" id="ek" min="0" max="300000" step="5000" value="100000"></label>
+        <label class="ctl"><span class="row"><span class="lab">Kapitalmarktzins p.a.</span><span class="val" id="v_kap"></span></span><input type="range" id="kap" min="0" max="12" step="0.1" value="7"></label>
+        <label class="ctl"><span class="row"><span class="lab">Laufzeit</span><span class="val" id="v_jahre"></span></span><input type="range" id="jahre" min="10" max="40" step="1" value="20"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Mietszenario</legend>
+      <div class="grid">
+        <label class="ctl"><span class="row"><span class="lab">Startmiete (kalt)</span><span class="val" id="v_miete"></span></span><input type="range" id="miete" min="500" max="4000" step="50" value="1500"></label>
+        <label class="ctl"><span class="row"><span class="lab">Mietsteigerung p.a.</span><span class="val" id="v_msteig"></span></span><input type="range" id="msteig" min="0" max="8" step="0.1" value="1.6"></label>
+        <label class="ctl"><span class="row"><span class="lab">Monatliche Sparrate</span><span class="val" id="v_save"></span></span><input type="range" id="save" min="0" max="2000" step="50" value="300"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Kaufszenario</legend>
+      <div class="grid">
+        <label class="ctl"><span class="row"><span class="lab">Hauswert</span><span class="val" id="v_haus"></span></span><input type="range" id="haus" min="200000" max="1500000" step="10000" value="500000"></label>
+        <label class="ctl"><span class="row"><span class="lab">Wertsteigerung Haus p.a.</span><span class="val" id="v_wert"></span></span><input type="range" id="wert" min="-2" max="8" step="0.1" value="3"></label>
+        <label class="ctl"><span class="row"><span class="lab">Kreditsumme</span><span class="val" id="v_kredit"></span></span><input type="range" id="kredit" min="0" max="800000" step="10000" value="450000"></label>
+        <label class="ctl"><span class="row"><span class="lab">Kreditzins (nominal) p.a.</span><span class="val" id="v_zins"></span></span><input type="range" id="zins" min="0" max="8" step="0.1" value="4"></label>
+        <label class="ctl"><span class="row"><span class="lab">Monatsrate Bank</span><span class="val" id="v_rate"></span></span><input type="range" id="rate" min="500" max="4000" step="50" value="1800"></label>
+      </div>
+    </fieldset>
+  </div>
+
+  <details class="logic">
+    <summary>Annahmen &amp; Rechenlogik</summary>
+    <div class="body">
+      <p>Beide Pfade zeigen das <strong>Vermögen abzüglich der verbrauchten Wohnkosten</strong>. Verbraucht heißt: das Geld ist weg (Miete bzw. Kreditzinsen). Gespartes (Sparrate, Tilgung) bleibt als Vermögen erhalten. So werden Sparen und Tilgen gleich behandelt.</p>
+      <p><strong>Mieten:</strong> <code>Vermögen = Anfangskapital × (1 + Kapitalmarktzins)^Jahre + Sparplan − kumulierte Miete</code>. Sparrate und Anfangskapital werden jährlich nachschüssig zum Kapitalmarktzins verzinst; die Miete steigt jährlich.</p>
+      <p><strong>Kaufen:</strong> <code>Vermögen = Hauswert − Restschuld − kumulierte Zinsen</code>. Der Hauswert wächst jährlich; der Kredit wird monatlich getilgt (nominale Verzinsung). Die Tilgung erhöht das Eigenkapital, nur die Zinsen gelten als Kosten.</p>
+      <ul>
+        <li>Die absoluten Werte enthalten <em>kein Einkommen</em> – aussagekräftig ist daher der Abstand der beiden Linien, nicht der Kontostand.</li>
+        <li>Bewusst ausgeklammert: Instandhaltung, Grundsteuer, Versicherung, Kaufnebenkosten, Inflationsbereinigung, Steuern auf Kapitalerträge.</li>
+      </ul>
+      <p style="margin-bottom:0">Dies ist eine Modellrechnung der eingestellten Annahmen, keine Finanz- oder Anlageberatung.</p>
+    </div>
+  </details>
+
+  <footer>
+    <p><strong>Hinweis:</strong> Vereinfachtes Modell zu Illustrationszwecken. Ergebnisse hängen vollständig von den eingestellten Annahmen ab und stellen keine Finanz-, Steuer- oder Anlageberatung dar.</p>
+    <p id="updated"></p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var DEFAULTS={ek:100000,kap:7,save:300,miete:1500,msteig:1.6,haus:500000,wert:3,kredit:450000,zins:4,rate:1800,jahre:20};
+  var IDS=Object.keys(DEFAULTS);
+  var $=function(id){return document.getElementById(id);};
+  var num=function(id){return parseFloat($(id).value);};
+  var fmtEur=function(v){return Math.round(v).toLocaleString('de-DE')+' €';};
+  var fmtPct=function(v){return v.toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';};
+  var chart=null;
+
+  function syncLabels(){
+    $('v_ek').textContent=fmtEur(num('ek'));
+    $('v_kap').textContent=fmtPct(num('kap'));
+    $('v_save').textContent=fmtEur(num('save'));
+    $('v_miete').textContent=fmtEur(num('miete'));
+    $('v_msteig').textContent=fmtPct(num('msteig'));
+    $('v_haus').textContent=fmtEur(num('haus'));
+    $('v_wert').textContent=fmtPct(num('wert'));
+    $('v_kredit').textContent=fmtEur(num('kredit'));
+    $('v_zins').textContent=fmtPct(num('zins'));
+    $('v_rate').textContent=fmtEur(num('rate'));
+    $('v_jahre').textContent=num('jahre')+' Jahre';
+  }
+
+  function calc(){
+    var A=num('ek'), kap=num('kap')/100, Ss=num('save');
+    var m0=num('miete'), ms=num('msteig')/100;
+    var H=num('haus'), g=num('wert')/100, L=num('kredit'), j=num('zins')/100, R=num('rate'), Y=num('jahre');
+    var labels=[], rent=[], buy=[];
+
+    // Kredit: monatliche Tilgung, kumulierte Zinsen je Jahr
+    var bal=L, cumInt=0, balY=[L], intY=[0];
+    for(var y=1;y<=Y;y++){
+      for(var m=0;m<12;m++){
+        if(bal<=0) continue;
+        var it=bal*(j/12);
+        if(bal+it<=R){ bal=0; } else { bal=bal+it-R; }
+        cumInt+=it;
+      }
+      balY.push(bal); intY.push(cumInt);
+    }
+    // Miete: jährlich steigend, kumuliert
+    var cum=0, rm=m0, cumR=[0];
+    for(var y2=0;y2<Y;y2++){ if(y2>0) rm*=(1+ms); cum+=rm*12; cumR.push(cum); }
+    // Sparplan: jährlich nachschüssig
+    var SP=[0], sp=0;
+    for(var y3=1;y3<=Y;y3++){ sp=sp*(1+kap)+12*Ss; SP.push(sp); }
+
+    for(var y4=0;y4<=Y;y4++){
+      labels.push(y4);
+      rent.push(A*Math.pow(1+kap,y4)+SP[y4]-cumR[y4]);
+      buy.push(H*Math.pow(1+g,y4)-balY[y4]-intY[y4]);
+    }
+
+    var be=null;
+    if(buy[0]>=rent[0]) be=0;
+    else for(var k=1;k<=Y;k++){ if(buy[k]>=rent[k] && buy[k-1]<rent[k-1]){ var d0=rent[k-1]-buy[k-1], d1=buy[k]-rent[k]; be=(k-1)+d0/(d0+d1); break; } }
+
+    return {labels:labels,rent:rent,buy:buy,Y:Y,be:be,
+      SP:SP[Y], eq:H*Math.pow(1+g,Y)-balY[Y], cumInt:intY[Y], cumRent:cumR[Y]};
+  }
+
+  function render(){
+    syncLabels();
+    var d=calc();
+    var rEnd=d.rent[d.Y], bEnd=d.buy[d.Y], diff=bEnd-rEnd;
+
+    $('o_rent').textContent=fmtEur(rEnd);
+    $('o_buy').textContent=fmtEur(bEnd);
+    $('o_diff').textContent=(diff>=0?'+':'−')+fmtEur(Math.abs(diff));
+    $('o_be').textContent=(d.be===null)?'nie':(d.be===0?'ab Start':'≈ Jahr '+d.be.toLocaleString('de-DE',{maximumFractionDigits:1}));
+    $('o_sp').textContent=fmtEur(d.SP);
+    $('o_eq').textContent=fmtEur(d.eq);
+    $('o_int').textContent=fmtEur(d.cumInt);
+    $('o_cum').textContent=fmtEur(d.cumRent);
+
+    $('vd-years').textContent=d.Y;
+    var who=$('vd-who');
+    if(Math.abs(diff)<500){ who.textContent='Gleichstand'; who.className='who'; $('vd-by').textContent='≈ 0 €'; }
+    else if(diff>0){ who.textContent='Kaufen'; who.className='who buy'; $('vd-by').textContent=fmtEur(diff); }
+    else { who.textContent='Mieten + sparen'; who.className='who rent'; $('vd-by').textContent=fmtEur(-diff); }
+
+    if(!chart){
+      var ctx=$('chart');
+      chart=new Chart(ctx,{type:'line',
+        data:{labels:d.labels,datasets:[
+          {label:'Mieten + sparen',data:d.rent,borderColor:'#2F6DB0',borderDash:[6,4],borderWidth:2,tension:0,pointRadius:0,pointHoverRadius:4},
+          {label:'Kaufen',data:d.buy,borderColor:'#15916B',borderWidth:2,tension:0,pointRadius:0,pointHoverRadius:4}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:false},
+            tooltip:{callbacks:{title:function(it){return 'Jahr '+it[0].label;},label:function(it){return it.dataset.label+': '+fmtEur(it.raw);}}}},
+          scales:{
+            x:{title:{display:true,text:'Jahre'},grid:{color:'rgba(120,128,120,0.10)'}},
+            y:{title:{display:true,text:'Vermögen nach Wohnkosten (€)'},grid:{color:'rgba(120,128,120,0.12)'},
+               ticks:{callback:function(v){return (v/1000).toLocaleString('de-DE')+'k';}}}
+          }}
+      });
+    } else {
+      chart.data.labels=d.labels;
+      chart.data.datasets[0].data=d.rent;
+      chart.data.datasets[1].data=d.buy;
+      chart.update();
+    }
+  }
+
+  IDS.forEach(function(id){ $(id).addEventListener('input',render); });
+  $('reset').addEventListener('click',function(){
+    IDS.forEach(function(id){ $(id).value=DEFAULTS[id]; });
+    render();
+  });
+
+  $('updated').textContent='Modellstand: '+new Date().toLocaleDateString('de-DE',{year:'numeric',month:'long'});
+  render();
+})();
+</script>
+</body>
+</html>
